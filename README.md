@@ -24,15 +24,15 @@ To quantify the trajectories of people behind movies, we will use the ratings an
     |Steven Spielberg  |   0.52 | 0.01   | 0.62  |
     |Bruce Willis      |   0.75 | 0.22   | 0.13  |
  
-In the vector of experience, we need to consider to normalize by the number of movies that each actor has worked.
+In the vector of experience, we need to consider to normalize by the number of movies that each actor/director or other has performed.
 
 Now, given the trajectories of the people that are behind a movie, we need forecast a rating from a particular user. Here we can compare the vector of preferences of the user (by category) with an aggregated vector of experience by category of the people behind that movie. The movie vector should consider the role of each person (a director of a movie and his or her experience should be more important than the experience of a camera man)
 
 By comparing the aggregated experience vector of the people working in the movie and the rating vector of ratings of each user, we will have an idea of the possible rating. We still need to work in a way to join this two vectors and get a forecasting for the rating.
 
 <b>Datasets
-http://www.grouplens.org/node/73
-http://www.imdb.com/interfaces
+ *  http://www.grouplens.org/node/73
+ *  http://www.imdb.com/interfaces
 
 <b>Data Analysis
 

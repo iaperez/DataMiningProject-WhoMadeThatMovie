@@ -415,7 +415,7 @@ for movieid,title in enumerate(moviesTitle):
 			similarityDistance = distance.cosine(userVector,movieVector)
 			#print str(similarityDistance)+" "+str(rating)
 			x.append(similarityDistance)
-			y.append(rating)
+			y.append(round(rating,0))
 			ratingsVScosine[round(rating,0)].append(similarityDistance)
 			histelements[round(rating,0)][round(similarityDistance,2)]+=1
 	else:

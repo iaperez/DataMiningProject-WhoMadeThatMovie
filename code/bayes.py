@@ -381,7 +381,7 @@ histelements=defaultdict(Counter)
 movieAvgRating=list()
 counter=0
 ratingsVScosine = defaultdict(list)
-
+statistcsUser = defaultdict(lambda:defaultdict(int))
 ratingcounter = 0
 ratingmisses = 0
 ratingOK = 0
@@ -391,6 +391,10 @@ for userid in userReviews:
 		tempRatingsMovies = defaultdict(list)
 		tempRatingsCrew = defaultdict(list)
 		tempReviewsBaseModel = [movie for movie in userReviews[userid] if movie != review]
+		#we are working only with the movies in matching in both datasets
+		tempReviewsBaseModel = [movie for movie in tempReviewsBaseModel if movielensFormatToImdbFormat(moviesTitle[movie[0]]) in movieToCrew]
+		if movielensFormatToImdbFormat(moviesTitle[review[0]]) not in movieToCrew: continue
+
 		#removing one movie  to create the model of the  classifier to test
 		for movie in tempReviewsBaseModel:
 			rating =movie[1]
@@ -414,83 +418,59 @@ for userid in userReviews:
 		for rr in tempRatingsMovies.iterkeys():
 			probabilityList = []
 			for testmember in crewtotest:
-				NumberMoviesWithMemberandRating = len([x for x in tempRatingsCrew[rr] if x == testmember])
+				NumberMoviesWithMemberandRating = len([x for x in tempRatingsCrew[rr] if x == testmember])+1
 				NumberMovieswithRating = len(tempRatingsMovies[rr])
-				totalmoviesBaseModel = sum([len(x) for x in tempRatingsMovies.itervalues()])
-				noMoviesWithMemberNoRating = 0
+				totalmoviesBaseModel = sum([len(x) for x in tempRatingsMovies.itervalues()])+5
+				MoviesWithMemberDifferentRating = 4
 				for rev in [x for x in tempRatingsMovies.iterkeys() if x != rr]:
-					noMoviesWithMemberNoRating+=len([x for x in tempRatingsCrew[rev] if x == testmember])
+					MoviesWithMemberDifferentRating+=len([x for x in tempRatingsCrew[rev] if x == testmember])
 				probXgivenRating = float(NumberMoviesWithMemberandRating)/NumberMovieswithRating
 				probRating = float(NumberMovieswithRating)/totalmoviesBaseModel
 				probNoRating = float(totalmoviesBaseModel-NumberMovieswithRating)/totalmoviesBaseModel
-				probXgivenNoRating = float(noMoviesWithMemberNoRating)/(totalmoviesBaseModel-NumberMovieswithRating)
+				probXgivenNoRating = float(MoviesWithMemberDifferentRating)/(totalmoviesBaseModel-NumberMovieswithRating)
 				pp = probXgivenRating*probRating
 				pp = pp/(pp+probNoRating*probXgivenNoRating)
 				#if pp !=0.0:
 				probabilityList.append(pp)
 			prob = 0
-			if 0 in probabilityList:
-				prob = 0
-			elif 1 in probabilityList:
-				prob = 1
-			else:
-				n =  sum([math.log(1-x)+math.log(x) for x in probabilityList])
-				prob = 1.0/(1.0+math.exp(n))
+			#if 0 in probabilityList:
+			#	prob = 0
+			#elif 1 in probabilityList:
+			# prob = 1
+			#else:
+			n =  sum([math.log(1-x)+math.log(x) for x in probabilityList])
+			prob = 1.0/(1.0+math.exp(n))
 			results[rr]=prob
 		#print results
 		#print sorted(results.items(), key=lambda x: x[1])
 		bestrating = 1
 		bestratingvalue = 0
 		for ww in results:
-			if results[ww]>bestratingvalue:
+			if results[ww]>=bestratingvalue:
 				bestrating=ww
 				bestratingvalue = results[ww]
-		#print str(userid) + " rt "+str(review[1])+" vs. "+str(bestrating)+" "+str(review[0])
-		if rr-bestrating==0:
+		#print str(userid) + " rt "+str(float(review[1]))+" vs. "+str(bestrating)+" "+str(review[0])
+		if float(float(review[1]))-float(bestrating)==0:
 			ratingOK+=1
+			statistcsUser[userid]["ratingok"]+=1
 		else:
 			ratingmisses+=1
+			statistcsUser[userid]["ratnotok"]+=1
 		ratingcounter+=1
-print "Bayes OK"+str(ratingOK)
-print "Bayes NoOK"+str(ratingmisses)
+	print "\r"+ str(userid),
+	print "\tOK "+str(statistcsUser[userid]['ratingok']),
+	print "\tNO "+str(statistcsUser[userid]['ratnotok'])
+print "Bayes OK "+str(ratingOK)
+print "Bayes NoOK "+str(ratingmisses)
 print "Total "+str(ratingcounter)
-#print "rating "+str(rr)+" prob."+str(prob)
-for movieid,title in enumerate(moviesTitle):
-	counter+=1
-	if movieid == 0 : continue
-	if title is None : continue
-	title = movielensFormatToImdbFormat(title)
-	if title in movieToCrew and title in imdbMovieRatings and title in imdbMovieGenres:
-		print "Found!!! "+title+" "+str(counter)
-		found+=1
-		movieVector = getTitleExperienceVector(title)
-		movieVector = movieVector*moviesVector[movieid]
-		if np.linalg.norm(movieVector) ==0: continue
-		r.append(len(moviesReviews[movieid]))
-		ratingsPerMovie = np.array([rev[1] for rev in moviesReviews[movieid]])
-		rmean = ratingsPerMovie.mean()
-		for review in moviesReviews[movieid]:
-			userid = review[0]
-			rating = review[1]
-			userVector = vectorsUsers[userid]
-			similarityDistance = distance.cosine(userVector,movieVector)
-			x.append(similarityDistance)
-			y.append(rating)
-			ratingsVScosine[round(rating,1)].append(similarityDistance)
-			histelements[round(rating,1)][round(similarityDistance,2)]+=1
-	else:
-		print "NotFound "+title+" "+str(counter)
-		noFnd+=1
 
-maxFreq = max([max(histelements[rt].itervalues()) for rt in histelements])
+avgOk = 0.0
+for ww in statistcsUser:
+	avgOk +=float(statistcsUser[ww]['ratingok'])/(statistcsUser[ww]['ratingok'] + statistcsUser[ww]['ratnotok'])
 
-for rating in sorted(ratingsVScosine.iterkeys()):
-	print "Rating "+str(rating)+" avg. similarity "+str(sum(ratingsVScosine[rating])/len(ratingsVScosine[rating]))
+avgOk = avgOk/len(statistcsUser)
 
-print "Found  "+str(found)
-print "NotFnd "+str(noFnd)
-print "avg. number of reviews "+str(float(sum(r))/len(r))
-
-
+print "Number of Users "+str(len(statistcsUser))
+print "Average success per user "+str(avgOk)
 
 
